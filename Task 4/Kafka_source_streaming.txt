@@ -1,0 +1,36 @@
+pyspark --master "local[3]" --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.0.1,io.delta:delta-core_2.12:1.1.0
+
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import *
+from pyspark.sql.types import *
+
+kafka_topic_name = "employee-test"
+kafka_bootstrap_servers = 'localhost:9092'
+
+
+df = spark \
+  .readStream \
+  .format("kafka") \
+  .option("kafka.bootstrap.servers", kafka_bootstrap_servers) \
+  .option("subscribe", "employee-test") \
+  .load()
+
+print("Schema of df: ")
+df.printSchema()
+
+df1 = df.selectExpr("CAST(value AS STRING)")
+
+schema = StructType([StructField("id",StringType(),False),StructField("firstname",StringType(),False),StructField("lastname",StringType(),False),StructField("email",StringType(),False),StructField("phonenumber",StringType(),False),StructField("hiredate",DateType(),False),StructField("salary",IntegerType(),False)])
+
+
+df2 = df1.select(from_json(col("value"), schema) .alias("employee"))
+
+df3 = df2.select("employee.*")
+
+df \
+.writeStream \
+.format("delta") \
+.outputMode("append") \
+.option("checkpointLocation", "/Users/sakshamtomar/desktop/delta/chk2") \
+.start("/Users/sakshamtomar/desktop/delta/delta-table") \
+.awaitTermination()
