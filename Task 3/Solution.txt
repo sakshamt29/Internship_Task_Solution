@@ -1,0 +1,54 @@
+Word Count Problem
+
+
+#using spark streaming
+
+from pyspark.streaming import StreamingContext
+
+ssc = StreamingContext(sc, 5)                       #here we give batch interval time in seconds
+
+lines = ssc.socketTextStream("localhost", 9999)     #Create a DStream that will connect to hostname:port, like localhost:9999
+
+words = lines.flatMap(lambda line: line.split(" "))    # Split each line into words
+
+pairs = words.map(lambda word: (word, 1))                   #Count each word in each batch
+wordCounts = pairs.reduceByKey(lambda x, y: x + y)
+
+wordCounts.pprint()
+
+ssc.start()             # Start the computation
+ssc.awaitTermination()  # Wait for the computation to terminate
+
+=========================================
+#using spark structured streaming
+
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import explode
+from pyspark.sql.functions import split
+
+lines = spark \
+    .readStream \
+    .format("socket") \
+    .option("host", "localhost") \
+    .option("port", 9998) \
+    .load()
+
+# Split the lines into words
+words = lines.select(
+   explode(
+       split(lines.value, " ")
+   ).alias("word")
+)
+
+# Generate running word count
+wordCounts = words.groupBy("word").count()
+
+query = wordCounts \
+    .writeStream \
+    .outputMode("complete") \
+    .format("console") \
+    .start()
+
+
+
+    
