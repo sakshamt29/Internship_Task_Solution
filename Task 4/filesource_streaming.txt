@@ -1,0 +1,30 @@
+pyspark --master "local[3]" --packages io.delta:delta-core_2.12:1.1.0
+
+from pyspark.sql.types import *
+
+
+schema = StructType([StructField("id",StringType()),StructField("firstname",StringType()),StructField("lastname",StringType()),StructField("email",StringType()),StructField("phonenumber",StringType()),StructField("hiredate",DateType()),StructField("salary",IntegerType())])
+
+
+df = spark \
+    .readStream \
+    .schema(schema) \
+    .csv("/Users/sakshamtomar/desktop/input_csv") 
+
+
+df \
+.writeStream \
+.format("delta") \
+.outputMode("append") \
+.option("checkpointLocation", "/Users/sakshamtomar/desktop/delta/chk") \
+.start("/Users/sakshamtomar/desktop/delta/delta-table") \
+.awaitTermination()
+
+query = spark.readStream.format("delta").load("/Users/sakshamtomar/desktop/delta/delta-table")
+
+q=query
+.writeStream \
+.format("console") \
+.outputMode("append") \
+.start() \
+.awaitTermination()
