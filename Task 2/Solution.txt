@@ -1,0 +1,23 @@
+
+#Assignment - 
+
+1.start pyspark using
+pyspark --conf "spark.mongodb.input.uri=mongodb://127.0.0.1/mydb.employee?readPreference=primaryPreferred" 
+
+by doing this the default spark session object uses the input.uri which specifies the database,the collection from which to read data.
+
+2.defining schema :
+from pyspark.sql.types import *
+from pyspark.sql.functions import*
+from pyspark.sql.window import*
+
+schema = StructType([StructField("Name",StringType(),False),StructField("Salary",IntegerType(),False),StructField("Department",StringType(),False)])
+
+df = spark.read.format("mongo").schema(schema).load()
+
+windowSpec = Window.partitionBy("Department").orderBy(col("Salary").desc())
+df.withColumn("Rank",rank().over(windowSpec)).show()
+
+df.write.parquet("/Users/sakshamtomar/Desktop/salary.parquet")
+
+df.write.json("/Users/sakshamtomar/Desktop/salary.json")
